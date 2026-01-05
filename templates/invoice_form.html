@@ -1,0 +1,304 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1 class="page-title">Expense Report Generator</h1>
+
+<!-- Flash Messages -->
+{% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        <div class="flash-messages">
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }}">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+{% endwith %}
+
+<form method="POST" class="invoice-form" id="invoiceForm">
+    {{ form.hidden_tag() }}
+
+    <!-- Company Information -->
+    <div class="form-card">
+        <div class="grid">
+            <div class="field">
+                <label>Company</label>
+                {{ form.company(class="input") }}
+                {% if form.company.errors %}
+                    <span class="error">{{ form.company.errors[0] }}</span>
+                {% endif %}
+            </div>
+
+            <div class="field">
+                <label>Prepared By</label>
+                {{ form.prepared_by(class="input") }}
+                {% if form.prepared_by.errors %}
+                    <span class="error">{{ form.prepared_by.errors[0] }}</span>
+                {% endif %}
+            </div>
+
+            <div class="field">
+                <label>Employee ID</label>
+                {{ form.employee_id(class="input") }}
+                {% if form.employee_id.errors %}
+                    <span class="error">{{ form.employee_id.errors[0] }}</span>
+                {% endif %}
+            </div>
+
+            <div class="field">
+                <label>Department</label>
+                {{ form.department(class="input") }}
+                {% if form.department.errors %}
+                    <span class="error">{{ form.department.errors[0] }}</span>
+                {% endif %}
+            </div>
+
+            <div class="field">
+                <label>Start Date</label>
+                {{ form.start_date(class="input", id="start_date") }}
+                {% if form.start_date.errors %}
+                    <span class="error">{{ form.start_date.errors[0] }}</span>
+                {% endif %}
+            </div>
+
+            <div class="field">
+                <label>End Date</label>
+                {{ form.end_date(class="input", id="end_date") }}
+                {% if form.end_date.errors %}
+                    <span class="error">{{ form.end_date.errors[0] }}</span>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Expenses Section -->
+    <h2 class="section-title">Expense Items</h2>
+
+    <div class="expense-table">
+        <!-- Table Header -->
+        <div class="expense-header">
+            <div>Date</div>
+            <div>Category</div>
+            <div>Description</div>
+            <div>Notes</div>
+            <div>Amount (BDT)</div>
+            <div>Action</div>
+        </div>
+
+        <!-- Expense Rows Container -->
+        <div id="expense-container">
+            {% for expense in form.expenses %}
+            <div class="expense-row" data-index="{{ loop.index0 }}">
+                {{ expense.form.date(class="input expense-date", placeholder="MM/DD/YYYY") }}
+                {{ expense.form.category(class="input") }}
+                {{ expense.form.description(class="input", placeholder="Expense description") }}
+                {{ expense.form.note(class="input", placeholder="Optional note") }}
+                {{ expense.form.amount(class="input", step="0.01", placeholder="0.00", min="0.01") }}
+                <button type="button" class="remove-btn" onclick="removeExpense(this)" title="Remove item">×</button>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Add Expense Button -->
+    <div style="text-align: center; margin: var(--space-lg) 0;">
+        <button type="button" class="add-btn" onclick="addExpense()">
+            ➕ Add Expense Item
+        </button>
+    </div>
+
+    <!-- Submit Button -->
+    <div class="btn-group">
+        <button type="submit" class="primary-btn">
+            📄 Generate Invoice PDF
+        </button>
+    </div>
+</form>
+
+<!-- Creator Credit -->
+<div class="creator-credit">
+    <p>Created and maintained by <a href="https://pdfolio-rho.vercel.app/" target="_blank" rel="noopener noreferrer">Pravakar Das</a></p>
+</div>
+
+<script>
+    let expenseIndex = {{ form.expenses|length }};
+
+    // Date range validation
+    const startDateInput = document.getElementById('start_date');
+    const endDateInput = document.getElementById('end_date');
+    
+    startDateInput.addEventListener('change', function() {
+        // Set minimum end date to start date
+        endDateInput.min = this.value;
+        
+        // If end date is before start date, clear it
+        if (endDateInput.value && endDateInput.value < this.value) {
+            endDateInput.value = '';
+        }
+        
+        // Update all expense date inputs
+        updateExpenseDateLimits();
+    });
+    
+    endDateInput.addEventListener('change', function() {
+        updateExpenseDateLimits();
+    });
+
+    function updateExpenseDateLimits() {
+        const startDate = startDateInput.value;
+        const endDate = endDateInput.value;
+        
+        const expenseDateInputs = document.querySelectorAll('.expense-date, [name*="-date"]');
+        expenseDateInputs.forEach(input => {
+            if (startDate) {
+                input.min = startDate;
+            }
+            if (endDate) {
+                input.max = endDate;
+            }
+        });
+    }
+
+    function validateExpenseRow(row) {
+        const inputs = row.querySelectorAll('input[required], select[required]');
+        for (let input of inputs) {
+            if (!input.value || input.value.trim() === '') {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    function addExpense() {
+        const container = document.getElementById('expense-container');
+        const rows = container.getElementsByClassName('expense-row');
+        
+        // Validate all existing rows are complete
+        for (let row of rows) {
+            if (!validateExpenseRow(row)) {
+                alert('Please fill all fields in the current expense items before adding a new one.');
+                return;
+            }
+        }
+        
+        const startDate = startDateInput.value;
+        const endDate = endDateInput.value;
+        
+        if (!startDate || !endDate) {
+            alert('Please select start and end dates first.');
+            return;
+        }
+        
+        const newRow = document.createElement('div');
+        newRow.className = 'expense-row';
+        newRow.setAttribute('data-index', expenseIndex);
+        
+        newRow.innerHTML = `
+            <input type="date" name="expenses-${expenseIndex}-date" class="input" min="${startDate}" max="${endDate}" required>
+            <select name="expenses-${expenseIndex}-category" class="input" required>
+                <option value="">Select Category</option>
+                <option value="Travel">Travel</option>
+                <option value="Food">Food</option>
+                <option value="Accommodation">Accommodation</option>
+                <option value="Office Supplies">Office Supplies</option>
+                <option value="Entertainment">Entertainment</option>
+                <option value="Transportation">Transportation</option>
+                <option value="Other">Other</option>
+            </select>
+            <input type="text" name="expenses-${expenseIndex}-description" class="input" placeholder="Expense description" required>
+            <input type="text" name="expenses-${expenseIndex}-note" class="input" placeholder="Optional note">
+            <input type="number" name="expenses-${expenseIndex}-amount" class="input" step="0.01" min="0.01" placeholder="0.00" required>
+            <button type="button" class="remove-btn" onclick="removeExpense(this)" title="Remove item">×</button>
+        `;
+        
+        container.appendChild(newRow);
+        expenseIndex++;
+        
+        // Scroll to the new row
+        newRow.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    function removeExpense(button) {
+        const container = document.getElementById('expense-container');
+        const rows = container.getElementsByClassName('expense-row');
+        
+        // Prevent removing the last row
+        if (rows.length <= 1) {
+            alert('At least one expense item is required.');
+            return;
+        }
+        
+        const row = button.closest('.expense-row');
+        row.remove();
+        
+        // Reindex remaining rows
+        reindexExpenses();
+    }
+
+    function reindexExpenses() {
+        const container = document.getElementById('expense-container');
+        const rows = container.getElementsByClassName('expense-row');
+        
+        Array.from(rows).forEach((row, index) => {
+            row.setAttribute('data-index', index);
+            
+            const inputs = row.querySelectorAll('input, select');
+            inputs.forEach(input => {
+                const name = input.getAttribute('name');
+                if (name) {
+                    const newName = name.replace(/expenses-\d+-/, `expenses-${index}-`);
+                    input.setAttribute('name', newName);
+                }
+            });
+        });
+        
+        expenseIndex = rows.length;
+    }
+
+    // Form validation
+    document.getElementById('invoiceForm').addEventListener('submit', function(e) {
+        const startDate = new Date(startDateInput.value);
+        const endDate = new Date(endDateInput.value);
+        
+        if (endDate < startDate) {
+            e.preventDefault();
+            alert('End date must be after start date.');
+            return false;
+        }
+        
+        // Check if at least one expense exists
+        const rows = document.getElementById('expense-container').getElementsByClassName('expense-row');
+        if (rows.length === 0) {
+            e.preventDefault();
+            alert('Please add at least one expense item.');
+            return false;
+        }
+        
+        // Validate all expense dates are within range
+        const expenseDateInputs = document.querySelectorAll('[name*="-date"]');
+        for (let input of expenseDateInputs) {
+            const expenseDate = new Date(input.value);
+            if (expenseDate < startDate || expenseDate > endDate) {
+                e.preventDefault();
+                alert('All expense dates must be between the start and end dates.');
+                return false;
+            }
+        }
+        
+        // Validate all rows are complete
+        for (let row of rows) {
+            if (!validateExpenseRow(row)) {
+                e.preventDefault();
+                alert('Please fill all required fields in all expense items.');
+                return false;
+            }
+        }
+    });
+    
+    // Initialize date limits on page load
+    updateExpenseDateLimits();
+</script>
+
+{% endblock %}
+

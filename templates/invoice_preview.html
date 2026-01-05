@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="preview-container">
+    <!-- Success Icon -->
+    <div class="success-icon">
+        ✓
+    </div>
+
+    <h1 class="page-title">Invoice Generated Successfully!</h1>
+
+    <!-- Invoice Details -->
+    <div class="preview-info">
+        <h2>Expense Report Details</h2>
+        <p><strong>Company:</strong> {{ invoice_data.company }}</p>
+        <p><strong>Prepared By:</strong> {{ invoice_data.prepared_by }}</p>
+        <p><strong>Date Range:</strong> {{ invoice_data.date_range }}</p>
+        <p><strong>Total Amount:</strong> BDT {{ "{:,.2f}".format(invoice_data.total) }}</p>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="preview-actions">
+        <a href="{{ url_for('invoice.download_invoice', filename=filename) }}" 
+           class="primary-btn" 
+           download>
+            ⬇️ Download PDF
+        </a>
+        <a href="{{ url_for('invoice.invoice_form') }}" 
+           class="secondary-btn">
+            ➕ Create New Invoice
+        </a>
+    </div>
+
+    <!-- Information Note -->
+    <div style="margin-top: 48px; color: var(--text-light); font-size: 0.9rem;">
+        <p>💡 Your invoice will be automatically cleaned up when you refresh or create a new invoice.</p>
+    </div>
+</div>
+{% endblock %}
+
