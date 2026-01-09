@@ -36,6 +36,9 @@ class ExpenseForm(Form):
     ("PiHR", "PiHR"),
     ("Courier Service", "Courier Service"),
     ("Office Equipment", "Office Equipment"),
+    ("Office Tour", "Office Tour"),
+    ("Office Event", "Office Event"),
+    ("Travel", "Travel"),
     ]
 ,
         validators=[DataRequired()],
